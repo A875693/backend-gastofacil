@@ -3,18 +3,23 @@ import {
   ExecutionContext,
   Injectable,
   UnauthorizedException,
-  Inject,
+  Logger,
 } from '@nestjs/common';
-import * as admin from 'firebase-admin';
+import { AuthService } from '../auth.service';
+import { UsersService } from '../../users/users.service';
 
 @Injectable()
 export class FirebaseAuthGuard implements CanActivate {
+  private readonly logger = new Logger(FirebaseAuthGuard.name);
+
   constructor(
-    @Inject('FIREBASE_ADMIN') private readonly firebaseAdmin: typeof admin,
+    private readonly authService: AuthService,
+    private readonly usersService: UsersService,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest();
+    const response = context.switchToHttp().getResponse();
     const authHeader = request.headers['authorization'];
 
     if (!authHeader) {
@@ -27,8 +32,28 @@ export class FirebaseAuthGuard implements CanActivate {
     }
 
     try {
-      const decodedToken = await this.firebaseAdmin.auth().verifyIdToken(token);
-      request.user = decodedToken; // Aquí tendrás uid, email, etc.
+      const decodedToken = await this.authService.verifyToken(token);
+      request.user = decodedToken;
+      
+      const now = Math.floor(Date.now() / 1000);
+      const timeRemaining = decodedToken.exp - now;
+      const minutesRemaining = Math.floor(timeRemaining / 60);
+      
+      response.setHeader('X-Token-Expires-In', minutesRemaining.toString());
+      
+      if (minutesRemaining < 10) {
+        response.setHeader('X-Token-Refresh-Suggested', 'true');
+      }
+      if (decodedToken.email) {
+        this.usersService
+          .syncEmailFromAuth(decodedToken.uid, decodedToken.email)
+          .catch((error) => {
+            this.logger.warn(
+              `Failed to sync email for user ${decodedToken.uid}: ${error.message}`,
+            );
+          });
+      }
+
       return true;
     } catch (error) {
       throw new UnauthorizedException('Invalid token');

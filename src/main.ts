@@ -6,27 +6,27 @@ import { ValidationPipe } from '@nestjs/common';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
-  // Habilitar CORS para desarrollo con Ionic
   app.enableCors({
-    origin: ['http://localhost:8100'], // URL de ionic serve
+    origin: [
+      'http://localhost:8100',
+      process.env.FRONTEND_URL || '*'
+    ],
     credentials: true,
   });
 
-  // Validaciones globales para DTOs
   app.useGlobalPipes(
     new ValidationPipe({
-      whitelist: true, // elimina propiedades no declaradas en el DTO
-      forbidNonWhitelisted: true, // lanza error si envían propiedades extra
-      transform: true, // transforma tipos (ej. string a number)
+      whitelist: true,
+      forbidNonWhitelisted: true,
+      transform: true,
     }),
   );
 
-  // Configuración Swagger
   const config = new DocumentBuilder()
     .setTitle('API GastoFacil')
     .setDescription('Documentación de la API de GastoFacil')
     .setVersion('1.0')
-    .addBearerAuth() // Para endpoints con JWT
+    .addBearerAuth()
     .build();
 
   const document = SwaggerModule.createDocument(app, config);

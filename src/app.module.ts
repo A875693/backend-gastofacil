@@ -7,7 +7,9 @@ import { UsersModule } from './users/users.module';
 import { ExpensesModule } from './expenses/expenses.module';
 import { FirebaseModule } from './firebase/firebase.module';
 import { BudgetsModule } from './budgets/budgets.module';
-import { SavingsGoalsModule } from './savings-goals/savings-goals.module';
+import { MigrationModule } from './migration/migration.module';
+import { CurrencyModule } from './currency/currency.module';
+import { CategoriesModule } from './categories/categories.module';
 
 @Module({
   imports: [
@@ -17,7 +19,9 @@ import { SavingsGoalsModule } from './savings-goals/savings-goals.module';
     UsersModule,
     ExpensesModule,
     BudgetsModule,
-    SavingsGoalsModule,
+    MigrationModule,
+    CurrencyModule,
+    CategoriesModule,
   ],
   controllers: [AppController],
   providers: [AppService],

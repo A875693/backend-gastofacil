@@ -1,132 +1,60 @@
-import {
-  Injectable,
-  NotFoundException,
-  ForbiddenException,
-} from '@nestjs/common';
-import * as admin from 'firebase-admin';
+import { Injectable } from '@nestjs/common';
 import { CreateExpenseDto } from './dto/create-expense.dto';
 import { UpdateExpenseDto } from './dto/update-expense.dto';
+import { UniversalExpensesQueryDto, UniversalStatsQueryDto } from './dto/expenses-filter-query.dto';
+import { 
+  UniversalExpensesResponse,
+  UniversalStatsResponse
+} from './interfaces/expense-stats.interface';
+import { Expense } from './interfaces/expense.interface';
 
-export interface Expense {
-  id?: string;
-  userId: string;
-  amount: number;
-  category: string;
-  note?: string;
-  date: Date;
-  paymentMethod?: string;
-  tags?: string[];
-  createdAt?: Date;
-  updatedAt?: Date;
-}
+import { ExpensesCrudService } from './services/expenses-crud.service';
+import { ExpensesQueryService } from './services/expenses-query.service';
+import { ExpensesStatsService } from './services/expenses-stats.service';
 
 @Injectable()
 export class ExpensesService {
-  private collection = admin.firestore().collection('expenses');
+  constructor(
+    private readonly crudService: ExpensesCrudService,
+    private readonly queryService: ExpensesQueryService,
+    private readonly statsService: ExpensesStatsService
+  ) {}
 
+  /**
+   * OPERACIONES CRUD
+   * Delegadas a ExpensesCrudService para separación de responsabilidades
+   */
+  
   async create(uid: string, dto: CreateExpenseDto): Promise<Expense> {
-    const now = new Date();
-    
-    // Crear objeto base sin campos undefined
-    const expense: any = {
-      userId: uid,
-      amount: dto.amount,
-      category: dto.category,
-      date: new Date(dto.date),
-      tags: dto.tags || [],
-      createdAt: now,
-      updatedAt: now,
-    };
-
-    // Solo agregar campos opcionales si no son undefined
-    if (dto.note !== undefined) {
-      expense.note = dto.note;
-    }
-    if (dto.paymentMethod !== undefined) {
-      expense.paymentMethod = dto.paymentMethod;
-    }
-
-    const docRef = await this.collection.add(expense);
-    return { ...expense, id: docRef.id };
+    return this.crudService.create(uid, dto);
   }
 
   async findAll(uid: string): Promise<Expense[]> {
-    const snapshot = await this.collection.where('userId', '==', uid).get();
-    const expenses: Expense[] = [];
-    snapshot.forEach((doc) => {
-      const data = doc.data() as Expense; // Tipamos explícitamente
-      if (data) {
-        expenses.push({ ...data, id: doc.id });
-      }
-    });
-    return expenses;
+    return this.crudService.findAll(uid);
   }
 
   async findOne(uid: string, id: string): Promise<Expense> {
-    const docRef = this.collection.doc(id);
-    const docSnap = await docRef.get();
-
-    if (!docSnap.exists) {
-      throw new NotFoundException('Gasto no encontrado');
-    }
-
-    const data = docSnap.data() as Expense | undefined;
-    if (!data) throw new NotFoundException('Gasto no encontrado');
-    if (data.userId !== uid) throw new ForbiddenException('No autorizado');
-
-    return { ...data, id: docSnap.id };
+    return this.crudService.findOne(uid, id);
   }
 
-  async update(
-    uid: string,
-    id: string,
-    dto: UpdateExpenseDto,
-  ): Promise<Expense> {
-    const docRef = this.collection.doc(id);
-    const docSnap = await docRef.get();
-
-    if (!docSnap.exists) {
-      throw new NotFoundException('Gasto no encontrado');
-    }
-
-    const data = docSnap.data() as Expense | undefined;
-    if (!data) throw new NotFoundException('Gasto no encontrado');
-    if (data.userId !== uid) throw new ForbiddenException('No autorizado');
-
-    // Crear objeto de actualización sin campos undefined
-    const updateData: any = {
-      updatedAt: new Date(),
-    };
-
-    // Solo agregar campos que tienen valor
-    if (dto.amount !== undefined) updateData.amount = dto.amount;
-    if (dto.category !== undefined) updateData.category = dto.category;
-    if (dto.note !== undefined) updateData.note = dto.note;
-    if (dto.date !== undefined) updateData.date = new Date(dto.date);
-    if (dto.paymentMethod !== undefined) updateData.paymentMethod = dto.paymentMethod;
-    if (dto.tags !== undefined) updateData.tags = dto.tags;
-
-    await docRef.update(updateData);
-
-    // Obtener el documento actualizado
-    const updatedDoc = await docRef.get();
-    const updatedData = updatedDoc.data() as Expense;
-    
-    return { ...updatedData, id };
+  async update(uid: string, id: string, dto: UpdateExpenseDto): Promise<Expense> {
+    return this.crudService.update(uid, id, dto);
   }
 
   async remove(uid: string, id: string): Promise<void> {
-    const docRef = this.collection.doc(id);
-    const docSnap = await docRef.get();
+    return this.crudService.remove(uid, id);
+  }
 
-    if (!docSnap.exists) {
-      throw new NotFoundException('Gasto no encontrado');
-    }
+  /**
+   * MÉTODOS DE CONSULTA UNIVERSALES
+   * API avanzada con filtros flexibles y agregaciones opcionales
+   */
 
-    const data = docSnap.data() as Expense | undefined;
-    if (!data) throw new NotFoundException('Gasto no encontrado');
-    if (data.userId !== uid) throw new ForbiddenException('No autorizado');
+  async findExpenses(userId: string, query: UniversalExpensesQueryDto): Promise<UniversalExpensesResponse> {
+    return this.queryService.findExpenses(userId, query);
+  }
 
-    await docRef.delete();
+  async getUniversalStats(userId: string, query: UniversalStatsQueryDto): Promise<UniversalStatsResponse> {
+    return this.statsService.getUniversalStats(userId, query);
   }
 }

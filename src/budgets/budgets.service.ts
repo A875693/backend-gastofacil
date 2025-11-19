@@ -161,34 +161,52 @@ export class BudgetsService {
    * Endpoint estrella: Calcula el gasto diario permitido
    * Considera presupuesto total, gastos del período y días restantes
    */
-  async getDailyAllowance(userId: string): Promise<DailyAllowanceDto> {
+  async getDailyAllowance(userId: string, year?: number, month?: number): Promise<DailyAllowanceDto> {
     const activeBudget = await this.findActive(userId);
     
     if (!activeBudget) {
-      throw new BadRequestException(
+      throw new NotFoundException(
         'No tienes un presupuesto activo configurado. Crea uno para calcular tu gasto diario.'
       );
     }
 
-    const periodInfo = this.periodCalculator.getCurrentPeriodInfo(activeBudget.period);
+    const periodInfo = year && month 
+      ? this.periodCalculator.getSpecificPeriodInfo(activeBudget.period, year, month)
+      : this.periodCalculator.getCurrentPeriodInfo(activeBudget.period);
+    
     const expenses = await this.expensesService.findAll(userId);
     
-    const spentThisPeriod = expenses
-      .filter(expense => {
-        const expenseDate = typeof expense.date === 'string' 
-          ? new Date(expense.date) 
-          : expense.date;
+    const expensesInPeriod = expenses.filter(expense => {
+      let expenseDate: Date;
+      
+      if (expense.date instanceof Date) {
+        expenseDate = expense.date;
+      } else if (typeof expense.date === 'string') {
+        expenseDate = new Date(expense.date);
+      } else if (expense.date && typeof expense.date === 'object' && 'seconds' in expense.date) {
+        expenseDate = new Date((expense.date as any).seconds * 1000);
+      } else {
+        return false;
+      }
+      
+      if (isNaN(expenseDate.getTime())) {
+        return false;
+      }
+      if (year && month) {
+        return this.periodCalculator.isDateInSpecificPeriod(expenseDate, activeBudget.period, year, month);
+      } else {
         return this.periodCalculator.isDateInCurrentPeriod(expenseDate, activeBudget.period);
-      })
+      }
+    });
+    
+    const spentThisPeriod = expensesInPeriod
       .reduce((total, expense) => total + Number(expense.amount), 0);
 
-    // Cálculos principales
     const remainingBudget = activeBudget.amount - spentThisPeriod;
+    
     const dailyAllowance = periodInfo.daysRemaining > 0 
       ? remainingBudget / periodInfo.daysRemaining 
       : 0;
-
-    // Análisis de tendencias
     const daysElapsed = periodInfo.totalDays - periodInfo.daysRemaining;
     const averageDailySpent = daysElapsed > 0 ? spentThisPeriod / daysElapsed : 0;
     const projectedTotalSpent = averageDailySpent * periodInfo.totalDays;
@@ -232,18 +250,18 @@ export class BudgetsService {
     const recommendations: string[] = [];
 
     if (remainingBudget <= 0) {
-      recommendations.push('⚠️ Has excedido tu presupuesto');
+      recommendations.push('Has excedido tu presupuesto');
       recommendations.push('Considera revisar tus gastos recientes');
       recommendations.push('Evita gastos no esenciales hasta el próximo período');
     } else if (budgetProgress >= alertThreshold) {
-      recommendations.push(`⚠️ Has gastado ${Math.round(budgetProgress * 100)}% de tu presupuesto`);
+      recommendations.push(`Has gastado ${Math.round(budgetProgress * 100)}% de tu presupuesto`);
       recommendations.push(`Puedes gastar €${dailyAllowance.toFixed(2)} por día los próximos ${daysLeft} días`);
       recommendations.push('Considera reducir gastos opcionales');
     } else if (budgetProgress > 0.5) {
-      recommendations.push('📊 Vas por buen camino pero mantente alerta');
+      recommendations.push('Vas por buen camino pero mantente alerta');
       recommendations.push(`Puedes gastar €${dailyAllowance.toFixed(2)} hoy sin exceder tu presupuesto`);
     } else {
-      recommendations.push('✅ ¡Excelente! Estás muy por debajo de tu presupuesto');
+      recommendations.push('Excelente, estás muy por debajo de tu presupuesto');
       recommendations.push(`Puedes gastar €${dailyAllowance.toFixed(2)} hoy cómodamente`);
       recommendations.push('Considera ahorrar el excedente para futuras metas');
     }

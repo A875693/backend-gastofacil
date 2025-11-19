@@ -17,6 +17,22 @@ export class PeriodCalculatorService {
   }
 
   /**
+   * Calcula información de un período específico (año/mes proporcionados)
+   */
+  getSpecificPeriodInfo(budgetPeriod: BudgetPeriod, year?: number, month?: number): PeriodInfo {
+    const now = new Date();
+    const targetYear = year || now.getFullYear();
+    const targetMonth = month || (now.getMonth() + 1);
+    
+    if (budgetPeriod === BudgetPeriod.WEEKLY) {
+      const referenceDate = new Date(targetYear, targetMonth - 1, 1);
+      return this.getWeeklyPeriodInfo(referenceDate);
+    } else {
+      return this.getMonthlyPeriodInfoForSpecificMonth(targetYear, targetMonth);
+    }
+  }
+
+  /**
    * Período semanal: Lunes a Domingo
    */
   private getWeeklyPeriodInfo(now: Date): PeriodInfo {
@@ -48,9 +64,34 @@ export class PeriodCalculatorService {
     const endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
     endDate.setHours(23, 59, 59, 999);
     
-    // Días restantes incluyendo hoy: del 27 al 31 = 5 días
     const daysRemaining = Math.max(1, endDate.getDate() - now.getDate() + 1);
     const totalDays = endDate.getDate();
+    
+    return {
+      startDate,
+      endDate,
+      daysRemaining,
+      totalDays,
+    };
+  }
+
+  /**
+   * Período mensual para un año/mes específico
+   */
+  private getMonthlyPeriodInfoForSpecificMonth(year: number, month: number): PeriodInfo {
+    const startDate = new Date(year, month - 1, 1);
+    const endDate = new Date(year, month, 0);
+    endDate.setHours(23, 59, 59, 999);
+    
+    const now = new Date();
+    const totalDays = endDate.getDate();
+    
+    let daysRemaining: number;
+    if (year === now.getFullYear() && month === now.getMonth() + 1) {
+      daysRemaining = Math.max(1, endDate.getDate() - now.getDate() + 1);
+    } else {
+      daysRemaining = totalDays;
+    }
     
     return {
       startDate,
@@ -65,6 +106,14 @@ export class PeriodCalculatorService {
    */
   isDateInCurrentPeriod(date: Date, budgetPeriod: BudgetPeriod): boolean {
     const periodInfo = this.getCurrentPeriodInfo(budgetPeriod);
+    return date >= periodInfo.startDate && date <= periodInfo.endDate;
+  }
+
+  /**
+   * Verifica si una fecha está dentro de un período específico
+   */
+  isDateInSpecificPeriod(date: Date, budgetPeriod: BudgetPeriod, year: number, month: number): boolean {
+    const periodInfo = this.getSpecificPeriodInfo(budgetPeriod, year, month);
     return date >= periodInfo.startDate && date <= periodInfo.endDate;
   }
 }

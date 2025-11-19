@@ -1,4 +1,4 @@
-import { Controller, Get, Patch, Body, UseGuards, Req } from '@nestjs/common';
+import { Controller, Get, Patch, Body, UseGuards, BadRequestException } from '@nestjs/common';
 import {
   ApiTags,
   ApiBearerAuth,
@@ -6,39 +6,70 @@ import {
   ApiResponse,
 } from '@nestjs/swagger';
 import { UsersService } from './users.service';
-import { FirebaseAuthGuard } from '../auth/firebase-auth.guard'; // 👈 cambiamos a Firebase
+import { UserPreferencesService } from './services/user-preferences.service';
+import { UpdateUserPreferencesDto } from './dto/update-user-preferences.dto';
+import { FirebaseAuthGuard } from '../auth/guards/firebase-auth.guard';
+import { GetUser } from '../auth/decorators/get-user.decorator';
 import { UpdateUserDto } from './dto/update-user.dto';
-import { AuthUser } from '../auth/types/auth-user.type'; // 👈 para tipar req.user
+import { UpdateDisplayNameDto } from './dto/update-display-name.dto';
+import type { DecodedIdToken } from 'firebase-admin/auth';
 
 @ApiTags('users')
+@UseGuards(FirebaseAuthGuard)
+@ApiBearerAuth()
 @Controller('users')
 export class UsersController {
-  constructor(private usersService: UsersService) {}
+  constructor(
+    private readonly usersService: UsersService,
+    private readonly preferencesService: UserPreferencesService,
+  ) {}
 
-  @UseGuards(FirebaseAuthGuard) // 👈 usamos el guard de Firebase
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Obtener el perfil del usuario' })
-  @ApiResponse({
-    status: 200,
-    description: 'Perfil de usuario obtenido correctamente',
-  })
-  @ApiResponse({ status: 401, description: 'No autorizado' })
   @Get('me')
-  getProfile(@Req() req: { user: AuthUser }) {
-    // 👈 tipado fuerte de req.user
-    return this.usersService.findById(req.user.firebaseUid);
+  @ApiOperation({ summary: 'Get user profile' })
+  @ApiResponse({ status: 200, description: 'User profile retrieved successfully' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  getProfile(@GetUser() user: DecodedIdToken) {
+    return this.usersService.findById(user.uid);
   }
 
-  @UseGuards(FirebaseAuthGuard)
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Actualizar el perfil del usuario' })
-  @ApiResponse({
-    status: 200,
-    description: 'Perfil de usuario actualizado correctamente',
-  })
-  @ApiResponse({ status: 401, description: 'No autorizado' })
   @Patch('me')
-  updateProfile(@Req() req: { user: AuthUser }, @Body() body: UpdateUserDto) {
-    return this.usersService.update(req.user.firebaseUid, body);
+  @ApiOperation({ summary: 'Update user profile' })
+  @ApiResponse({ status: 200, description: 'User profile updated successfully' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  updateProfile(@GetUser() user: DecodedIdToken, @Body() body: UpdateUserDto) {
+    return this.usersService.update(user.uid, body);
+  }
+
+  @Patch('me/display-name')
+  @ApiOperation({ summary: 'Update user display name' })
+  @ApiResponse({ status: 200, description: 'Display name updated successfully' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  updateDisplayName(@GetUser() user: DecodedIdToken, @Body() body: UpdateDisplayNameDto) {
+    return this.usersService.updateDisplayName(user.uid, body.displayName);
+  }
+
+  @Get('me/preferences')
+  @ApiOperation({ 
+    summary: 'Get user preferences',
+    description: 'Get user currency and notification preferences'
+  })
+  @ApiResponse({ status: 200, description: 'User preferences retrieved successfully' })
+  getUserPreferences(@GetUser() user: DecodedIdToken) {
+    if (!user || !user.uid) {
+      throw new BadRequestException('Invalid user token - no UID found');
+    }
+    
+    return this.preferencesService.getUserPreferences(user.uid);
+  }
+
+  @Patch('me/preferences')
+  @ApiOperation({ 
+    summary: 'Update user preferences',
+    description: 'Update user currency and notification preferences'
+  })
+  @ApiResponse({ status: 200, description: 'User preferences updated successfully' })
+  @ApiResponse({ status: 400, description: 'Invalid preference data' })
+  updatePreferences(@GetUser() user: DecodedIdToken, @Body() body: UpdateUserPreferencesDto) {
+    return this.preferencesService.updatePreferences(user.uid, body);
   }
 }

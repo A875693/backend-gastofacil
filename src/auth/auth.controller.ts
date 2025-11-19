@@ -1,31 +1,33 @@
 import { Body, Controller, Post } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
-import { RegisterDto } from './dto/register.dto';
 
 @ApiTags('auth')
 @Controller('auth')
 export class AuthController {
   constructor(private authService: AuthService) {}
 
-  @Post('register')
-  @ApiOperation({ summary: 'Registrar un nuevo usuario (Firebase)' })
-  @ApiResponse({ status: 201, description: 'Usuario registrado correctamente' })
-  async register(@Body() registerDto: RegisterDto) {
-    const { email, password, name } = registerDto;
-    return this.authService.register(email, password, name);
-  }
-
-  @Post('verify')
+  @Post('verify-token')
   @ApiOperation({
-    summary:
-      'Verificar un ID Token de Firebase (lo envía el cliente tras login)',
+    summary: 'Verificar ID Token de Firebase',
+    description: 'Valida token de Firebase y retorna información del usuario'
   })
   @ApiResponse({
     status: 200,
-    description: 'Token válido, devuelve información del usuario',
+    description: 'Token válido - usuario autenticado',
+    schema: {
+      example: {
+        uid: 'firebase_uid_here',
+        email: 'usuario@example.com',
+        emailVerified: true
+      }
+    }
   })
-  async verify(@Body('idToken') idToken: string) {
+  @ApiResponse({
+    status: 401,
+    description: 'Token inválido o expirado'
+  })
+  async verifyToken(@Body('idToken') idToken: string) {
     return this.authService.verifyToken(idToken);
   }
 }

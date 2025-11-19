@@ -12,7 +12,7 @@ import { BudgetPeriod } from '../interfaces/budget.interface';
 export class CreateBudgetDto {
   @ApiProperty({
     example: 1000,
-    description: 'Cantidad máxima del presupuesto en euros',
+    description: 'Cantidad máxima del presupuesto',
   })
   @IsNumber()
   @Min(0.01)

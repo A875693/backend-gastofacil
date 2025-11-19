@@ -1,12 +1,26 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { UsersService } from './users.service';
 
+// Mock Firebase Admin
+const mockFirebaseAdmin = {
+  auth: jest.fn(() => ({
+    getUser: jest.fn(),
+    createUser: jest.fn(),
+  })),
+};
+
 describe('UsersService', () => {
   let service: UsersService;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      providers: [UsersService],
+      providers: [
+        UsersService,
+        {
+          provide: 'FIREBASE_ADMIN',
+          useValue: mockFirebaseAdmin,
+        },
+      ],
     }).compile();
 
     service = module.get<UsersService>(UsersService);

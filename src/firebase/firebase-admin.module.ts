@@ -15,14 +15,24 @@ interface ServiceAccount {
     {
       provide: 'FIREBASE_ADMIN',
       useFactory: (): admin.app.App => {
-        // Leer archivo JSON de Firebase
+        // En producción, usar variables de entorno
+        if (process.env.FIREBASE_PROJECT_ID && 
+            process.env.FIREBASE_CLIENT_EMAIL && 
+            process.env.FIREBASE_PRIVATE_KEY) {
+          return admin.initializeApp({
+            credential: admin.credential.cert({
+              projectId: process.env.FIREBASE_PROJECT_ID,
+              clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+              privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
+            }),
+          });
+        }
+
+        // En desarrollo, leer archivo JSON
         const filePath = join(__dirname, 'serviceAccountKey.json');
         const fileContents = readFileSync(filePath, 'utf8');
-
-        // Parse seguro tipado
         const serviceAccount = JSON.parse(fileContents) as ServiceAccount;
 
-        // Inicializar Firebase Admin
         return admin.initializeApp({
           credential: admin.credential.cert({
             projectId: serviceAccount.projectId,
