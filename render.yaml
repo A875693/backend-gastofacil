@@ -4,7 +4,7 @@ services:
     runtime: node
     env: node
     buildCommand: npm install && npx nest build
-    startCommand: npm run start:prod
+    startCommand: node dist/src/main.js
     envVars:
       - key: NODE_ENV
         value: production
