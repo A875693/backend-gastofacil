@@ -24,7 +24,6 @@ export class ExpensesService {
    * OPERACIONES CRUD
    * Delegadas a ExpensesCrudService para separación de responsabilidades
    */
-  
   async create(uid: string, dto: CreateExpenseDto): Promise<Expense> {
     return this.crudService.create(uid, dto);
   }
@@ -49,7 +48,6 @@ export class ExpensesService {
    * MÉTODOS DE CONSULTA UNIVERSALES
    * API avanzada con filtros flexibles y agregaciones opcionales
    */
-
   async findExpenses(userId: string, query: UniversalExpensesQueryDto): Promise<UniversalExpensesResponse> {
     return this.queryService.findExpenses(userId, query);
   }

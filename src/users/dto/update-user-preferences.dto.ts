@@ -1,4 +1,4 @@
-import { IsOptional, IsBoolean, IsString, IsIn } from 'class-validator';
+import { IsOptional, IsBoolean, IsString, IsIn, IsNumber, Min, Max } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class UpdateCurrencyDto {
@@ -54,6 +54,19 @@ export class UpdateUIPreferencesDto {
   @IsString()
   @IsIn(['en', 'es', 'fr', 'de', 'it', 'pt', 'ca'])
   language?: string;
+
+  @ApiProperty({ 
+    description: 'Porcentaje de ahorro objetivo',
+    example: 20,
+    minimum: 5,
+    maximum: 80,
+    required: false
+  })
+  @IsOptional()
+  @IsNumber()
+  @Min(5)
+  @Max(80)
+  savingsPercentage?: number;
 }
 
 export class UpdateUserPreferencesDto {

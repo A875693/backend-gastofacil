@@ -10,7 +10,8 @@ export interface UserPreferences {
   pushNotifications: boolean;
   theme: string;
   language: string;
-  preferredPaymentMethod?: string; // Nueva propiedad
+  preferredPaymentMethod?: string;
+  savingsPercentage?: number;
 }
 
 @Injectable()
@@ -82,6 +83,7 @@ export class UserPreferencesService {
       theme: userData?.theme || 'auto',
       language: userData?.language || 'en',
       preferredPaymentMethod: userData?.preferredPaymentMethod,
+      savingsPercentage: userData?.savingsPercentage,
     };
   }
 
@@ -99,6 +101,7 @@ export class UserPreferencesService {
     const pushNotifications = updates.notifications?.pushNotifications || updates.pushNotifications;
     const theme = updates.ui?.theme;
     const language = updates.ui?.language;
+    const savingsPercentage = updates.ui?.savingsPercentage;
     const preferredPaymentMethod = updates.preferredPaymentMethod;
 
     if (preferredCurrency) {
@@ -133,6 +136,10 @@ export class UserPreferencesService {
     
     if (language !== undefined) {
       updateData.language = language;
+    }
+
+    if (savingsPercentage !== undefined) {
+      updateData.savingsPercentage = savingsPercentage;
     }
 
     if (preferredPaymentMethod !== undefined) {
