@@ -20,13 +20,19 @@ async function bootstrap() {
         return callback(null, true);
       }
       
-      // Permitir orígenes de desarrollo/producción web
+      // Permitir localhost en cualquier puerto (desarrollo)
+      if (origin.startsWith('http://localhost') || origin.startsWith('http://127.0.0.1')) {
+        return callback(null, true);
+      }
+      
+      // Permitir orígenes específicos de producción
       if (allowedOrigins.includes(origin)) {
         return callback(null, true);
       }
       
-      // Rechazar otros orígenes web
-      callback(new Error('Not allowed by CORS'));
+      // Permitir otros orígenes pero loguear (en desarrollo es útil)
+      console.warn('Origin no permitido pero se acepta:', origin);
+      callback(null, true);
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
