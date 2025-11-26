@@ -52,7 +52,7 @@ export class ExpensesAggregationService {
   }
 
   /**
-   * Populate categoryDetails in breakdown items
+   * Para categorías personalizadas, obtiene detalles adicionales
    */
   private async populateCategoryBreakdown(
     breakdown: CategoryBreakdown[],

@@ -6,12 +6,31 @@ import { ValidationPipe } from '@nestjs/common';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
+  // CORS solo para web (las apps nativas no lo necesitan)
+  const allowedOrigins = [
+    'http://localhost:8100',              // Desarrollo local Ionic
+    'http://localhost:4200',              // Desarrollo local Angular
+    process.env.FRONTEND_URL,             // Web en producción (Vercel)
+  ].filter(Boolean);
+
   app.enableCors({
-    origin: [
-      'http://localhost:8100',
-      process.env.FRONTEND_URL || '*'
-    ],
+    origin: (origin, callback) => {
+      // Las apps nativas (Capacitor) no envían header Origin, permitirlas
+      if (!origin) {
+        return callback(null, true);
+      }
+      
+      // Permitir orígenes de desarrollo/producción web
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+      
+      // Rechazar otros orígenes web
+      callback(new Error('Not allowed by CORS'));
+    },
     credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
   });
 
   app.useGlobalPipes(
