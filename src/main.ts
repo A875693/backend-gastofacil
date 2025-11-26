@@ -6,33 +6,34 @@ import { ValidationPipe } from '@nestjs/common';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
-  // CORS solo para web (las apps nativas no lo necesitan)
-  const allowedOrigins = [
-    'http://localhost:8100',              // Desarrollo local Ionic
-    'http://localhost:4200',              // Desarrollo local Angular
-    process.env.FRONTEND_URL,             // Web en producción (Vercel)
-  ].filter(Boolean);
-
   app.enableCors({
     origin: (origin, callback) => {
-      // Las apps nativas (Capacitor) no envían header Origin, permitirlas
+      // Permitir peticiones sin origin (apps nativas)
       if (!origin) {
         return callback(null, true);
       }
       
-      // Permitir localhost en cualquier puerto (desarrollo)
+      const allowed = [
+        'https://app-gastofacil.vercel.app',  // Web producción
+        'http://localhost:4200',              // Desarrollo Angular
+        'http://localhost:8100',              // Desarrollo Ionic
+        'https://localhost',                  // Android Capacitor
+        'capacitor://localhost',              // iOS Capacitor
+      ];
+      
+      // Permitir si está en la lista
+      if (allowed.includes(origin)) {
+        return callback(null, true);
+      }
+      
+      // Permitir cualquier localhost (desarrollo)
       if (origin.startsWith('http://localhost') || origin.startsWith('http://127.0.0.1')) {
         return callback(null, true);
       }
       
-      // Permitir orígenes específicos de producción
-      if (allowedOrigins.includes(origin)) {
-        return callback(null, true);
-      }
-      
-      // Permitir otros orígenes pero loguear (en desarrollo es útil)
-      console.warn('Origin no permitido pero se acepta:', origin);
-      callback(null, true);
+      // Rechazar otros
+      console.warn('CORS: Origin rechazado ->', origin);
+      callback(null, false);
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
