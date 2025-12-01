@@ -7,11 +7,37 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
   app.enableCors({
-    origin: [
-      'http://localhost:8100',
-      process.env.FRONTEND_URL || '*'
-    ],
+    origin: (origin, callback) => {
+      // Permitir peticiones sin origin (apps nativas)
+      if (!origin) {
+        return callback(null, true);
+      }
+      
+      const allowed = [
+        'https://app-gastofacil.vercel.app',  // Web producción
+        'http://localhost:4200',              // Desarrollo Angular
+        'http://localhost:8100',              // Desarrollo Ionic
+        'https://localhost',                  // Android Capacitor
+        'capacitor://localhost',              // iOS Capacitor
+      ];
+      
+      // Permitir si está en la lista
+      if (allowed.includes(origin)) {
+        return callback(null, true);
+      }
+      
+      // Permitir cualquier localhost (desarrollo)
+      if (origin.startsWith('http://localhost') || origin.startsWith('http://127.0.0.1')) {
+        return callback(null, true);
+      }
+      
+      // Rechazar otros
+      console.warn('CORS: Origin rechazado ->', origin);
+      callback(null, false);
+    },
     credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
   });
 
   app.useGlobalPipes(
